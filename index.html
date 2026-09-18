@@ -1,0 +1,719 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Kerala Life - Open World</title>
+<style>
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#87ceeb;font-family:Arial,sans-serif;touch-action:none}
+canvas{display:block}
+button,input,select{font:inherit}
+.hidden{display:none!important}
+
+/* FIRST / PROFILE SCREEN */
+#profileScreen{position:fixed;inset:0;z-index:1000;background:linear-gradient(135deg,#0b1726,#173b50);display:flex;align-items:center;justify-content:center;padding:18px;overflow:auto}
+.profileCard{width:min(430px,100%);background:rgba(255,255,255,.97);border-radius:24px;padding:24px;box-shadow:0 20px 60px rgba(0,0,0,.4)}
+.profileCard h1{margin:0 0 5px;text-align:center;color:#102a43;font-size:27px}
+.profileCard .sub{text-align:center;color:#667085;margin:0 0 18px;font-size:13px}
+.photoBox{width:150px;height:150px;margin:0 auto 18px;border-radius:50%;border:4px solid #17805c;background:#e9eef2;overflow:hidden;display:flex;align-items:center;justify-content:center;cursor:pointer}
+#photoPreview{width:100%;height:100%;object-fit:cover;display:none}
+.photoPlaceholder{text-align:center;color:#667085;font-size:13px;padding:15px}
+.photoPlaceholder b{display:block;font-size:35px;margin-bottom:5px}
+.formGroup{margin-bottom:12px}
+.formGroup label{display:block;font-size:12px;font-weight:bold;color:#344054;margin-bottom:5px}
+.formGroup input,.formGroup select{width:100%;height:46px;border:1px solid #d0d5dd;border-radius:12px;padding:0 13px;outline:none;background:white}
+#startGame{width:100%;height:50px;border:0;border-radius:14px;background:#17805c;color:white;font-weight:bold;font-size:15px;margin-top:5px}
+#startGame:active{transform:scale(.98)}
+.smallNote{text-align:center;font-size:10px;color:#667085;margin:10px 0 0}
+
+/* GAME UI */
+#gameUI{position:fixed;inset:0;z-index:20;pointer-events:none}
+#topUI{position:fixed;top:10px;left:10px;right:10px;display:flex;justify-content:space-between;gap:8px;align-items:flex-start}
+.uiPill{color:#fff;background:rgba(0,0,0,.62);padding:8px 11px;border-radius:15px;font-size:11px;backdrop-filter:blur(5px)}
+#mission{position:fixed;top:60px;left:50%;transform:translateX(-50%);max-width:70%;color:#fff;background:rgba(0,0,0,.6);padding:7px 13px;border-radius:15px;font-size:11px;text-align:center}
+#minimap{position:fixed;right:12px;top:86px;width:128px;height:128px;border-radius:50%;background:#2f6b45;border:3px solid #fff;overflow:hidden;box-shadow:0 3px 12px rgba(0,0,0,.3)}
+.mapRoadV{position:absolute;width:18px;height:100%;left:55px;background:#777}
+.mapRoadH{position:absolute;width:100%;height:18px;top:55px;background:#777}
+#mapPlayer{position:absolute;width:10px;height:10px;border-radius:50%;background:#ff3030;left:59px;top:59px}
+#backButton{position:fixed;left:12px;top:60px;pointer-events:auto;width:58px;height:35px;border:1px solid rgba(255,255,255,.5);border-radius:12px;background:rgba(0,0,0,.62);color:white;font-weight:bold;font-size:11px}
+#cameraArea{position:fixed;right:0;top:0;width:68%;height:72%;z-index:10;pointer-events:auto}
+#joystick{position:fixed;left:18px;bottom:22px;width:125px;height:125px;border-radius:50%;background:rgba(255,255,255,.18);border:2px solid rgba(255,255,255,.5);z-index:100;pointer-events:auto;touch-action:none}
+#stick{position:absolute;width:52px;height:52px;left:34px;top:34px;border-radius:50%;background:rgba(255,255,255,.82);pointer-events:none}
+#buttons{position:fixed;right:18px;bottom:22px;display:grid;grid-template-columns:72px 72px;gap:9px;z-index:100}
+.gameButton{width:72px;height:72px;border-radius:50%;border:2px solid white;background:rgba(0,0,0,.62);color:white;font-weight:bold;font-size:10px;pointer-events:auto;touch-action:none}
+.gameButton:active,#backButton:active{transform:scale(.94)}
+#toast{position:fixed;left:50%;bottom:165px;transform:translateX(-50%);background:rgba(0,0,0,.72);color:#fff;padding:9px 13px;border-radius:12px;font-size:11px;opacity:0;transition:.25s;pointer-events:none}
+#toast.show{opacity:1}
+#pauseMenu{position:fixed;inset:0;background:rgba(0,0,0,.72);z-index:300;display:none;align-items:center;justify-content:center;pointer-events:auto}
+.pauseCard{background:#fff;border-radius:20px;padding:22px;width:min(300px,85%);text-align:center}
+.pauseCard h2{margin:0 0 15px}
+.pauseCard button{width:100%;height:44px;border:0;border-radius:11px;margin-top:8px;background:#17805c;color:#fff;font-weight:bold}
+#loading{position:fixed;inset:0;background:#111;color:white;display:flex;align-items:center;justify-content:center;flex-direction:column;z-index:1500;font-size:18px;text-align:center}
+#loading small{margin-top:8px;color:#bbb;font-size:11px}
+@media(max-width:360px){#joystick{width:110px;height:110px}.gameButton{width:65px;height:65px}.buttons{gap:6px}}
+</style>
+</head>
+<body>
+
+<!-- FIRST SCREEN: NAME + DETAILS + PHOTO -->
+<section id="profileScreen">
+  <div class="profileCard">
+    <h1>KERALA LIFE</h1>
+    <p class="sub">Create your player profile</p>
+
+    <label class="photoBox" for="photoInput">
+      <img id="photoPreview" alt="Profile photo">
+      <div id="photoPlaceholder" class="photoPlaceholder">
+        <b>📷</b>
+        Add your photo
+      </div>
+    </label>
+    <input id="photoInput" type="file" accept="image/*" class="hidden">
+
+    <div class="formGroup">
+      <label>PLAYER NAME</label>
+      <input id="playerName" maxlength="24" placeholder="Enter your name">
+    </div>
+
+    <div class="formGroup">
+      <label>AGE</label>
+      <input id="playerAge" type="number" min="10" max="100" placeholder="Enter age">
+    </div>
+
+    <div class="formGroup">
+      <label>CITY</label>
+      <select id="playerCity">
+        <option value="Kochi">Kochi</option>
+        <option value="Ernakulam">Ernakulam</option>
+        <option value="Malappuram">Malappuram</option>
+        <option value="Other Kerala">Other Kerala</option>
+      </select>
+    </div>
+
+    <button id="startGame">CREATE PROFILE & START GAME</button>
+    <p class="smallNote">Your profile is saved only in this browser using local storage.</p>
+  </div>
+</section>
+
+<div id="loading" class="hidden">Loading Kerala Life...<small>Building the 3D world</small></div>
+
+<!-- GAME UI -->
+<div id="gameUI" class="hidden">
+  <div id="topUI">
+    <div class="uiPill" id="nameUI">PLAYER</div>
+    <div class="uiPill" id="statsUI">❤️ 100 &nbsp; 💰 ₹500 &nbsp; ⭐ 1</div>
+  </div>
+
+  <button id="backButton">BACK</button>
+  <div id="mission">Mission: Explore the city</div>
+
+  <div id="minimap">
+    <div class="mapRoadV"></div>
+    <div class="mapRoadH"></div>
+    <div id="mapPlayer"></div>
+  </div>
+
+  <div id="cameraArea"></div>
+
+  <div id="joystick"><div id="stick"></div></div>
+
+  <div id="buttons">
+    <button class="gameButton" id="jumpButton">JUMP</button>
+    <button class="gameButton" id="runButton">RUN</button>
+    <button class="gameButton" id="interactButton">ACTION</button>
+    <button class="gameButton" id="vehicleButton">CAR</button>
+  </div>
+
+  <div id="toast"></div>
+</div>
+
+<div id="pauseMenu">
+  <div class="pauseCard">
+    <h2>GAME MENU</h2>
+    <button id="resumeButton">RESUME</button>
+    <button id="profileButton">PROFILE</button>
+    <button id="saveButton">SAVE GAME</button>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.min.js"></script>
+<script>
+"use strict";
+
+/* =========================
+   PROFILE / SAVE SYSTEM
+========================= */
+const STORAGE_KEY = "kerala_life_profile_v1";
+let profile = JSON.parse(localStorage.getItem(STORAGE_KEY) || "null");
+
+const profileScreen = document.getElementById("profileScreen");
+const gameUI = document.getElementById("gameUI");
+const loading = document.getElementById("loading");
+const photoInput = document.getElementById("photoInput");
+const photoPreview = document.getElementById("photoPreview");
+const photoPlaceholder = document.getElementById("photoPlaceholder");
+
+let photoData = "";
+
+photoInput.addEventListener("change", () => {
+  const file = photoInput.files && photoInput.files[0];
+  if (!file) return;
+  if (!file.type.startsWith("image/")) return;
+
+  const reader = new FileReader();
+  reader.onload = e => {
+    photoData = e.target.result;
+    photoPreview.src = photoData;
+    photoPreview.style.display = "block";
+    photoPlaceholder.style.display = "none";
+  };
+  reader.readAsDataURL(file);
+});
+
+function showProfileData() {
+  if (!profile) return;
+  document.getElementById("playerName").value = profile.name || "";
+  document.getElementById("playerAge").value = profile.age || "";
+  document.getElementById("playerCity").value = profile.city || "Kochi";
+  if (profile.photo) {
+    photoData = profile.photo;
+    photoPreview.src = profile.photo;
+    photoPreview.style.display = "block";
+    photoPlaceholder.style.display = "none";
+  }
+}
+
+showProfileData();
+
+/* =========================
+   THREE.JS WORLD
+========================= */
+let scene, camera, renderer;
+let player, playerParts = {};
+let clock = new THREE.Clock();
+let cameraYaw = 0;
+let cameraPitch = 0.55;
+let moveX = 0, moveZ = 0;
+let running = false;
+let jumpVelocity = 0;
+let isGrounded = true;
+let vehicleMode = false;
+let gameStarted = false;
+let paused = false;
+
+const worldLimit = 260;
+const playerSpeed = 0.105;
+
+const gameState = {
+  health: 100,
+  money: 500,
+  level: 1,
+  xp: 0,
+  mission: "Explore the city"
+};
+
+function saveGame() {
+  if (!profile) return;
+  profile.health = gameState.health;
+  profile.money = gameState.money;
+  profile.level = gameState.level;
+  profile.xp = gameState.xp;
+  profile.mission = gameState.mission;
+  profile.photo = photoData || profile.photo || "";
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(profile));
+  showToast("Game saved");
+}
+
+function loadGame() {
+  if (!profile) return;
+  gameState.health = Number(profile.health ?? 100);
+  gameState.money = Number(profile.money ?? 500);
+  gameState.level = Number(profile.level ?? 1);
+  gameState.xp = Number(profile.xp ?? 0);
+  gameState.mission = profile.mission || "Explore the city";
+}
+
+function updateUI() {
+  document.getElementById("nameUI").textContent = profile ? profile.name : "PLAYER";
+  document.getElementById("statsUI").innerHTML =
+    `❤️ ${gameState.health} &nbsp; 💰 ₹${gameState.money} &nbsp; ⭐ ${gameState.level}`;
+  document.getElementById("mission").textContent = "Mission: " + gameState.mission;
+}
+
+/* =========================
+   WORLD HELPERS
+========================= */
+function mat(color) {
+  return new THREE.MeshStandardMaterial({color, roughness:.85, metalness:.05});
+}
+
+function box(w,h,d,color) {
+  return new THREE.Mesh(new THREE.BoxGeometry(w,h,d), mat(color));
+}
+
+function cylinder(r,h,color,segments=16) {
+  return new THREE.Mesh(new THREE.CylinderGeometry(r,r,h,segments), mat(color));
+}
+
+function addRoad(x,z,w,d) {
+  const road = box(w,.06,d,0x3e4145);
+  road.position.set(x,.03,z);
+  scene.add(road);
+
+  const lineMat = mat(0xe8df9a);
+  if (w > d) {
+    for (let px=x-w/2+8; px<x+w/2; px+=14) {
+      const line = box(5,.065,.16,0xe8df9a);
+      line.position.set(px,.07,z);
+      scene.add(line);
+    }
+  } else {
+    for (let pz=z-d/2+8; pz<z+d/2; pz+=14) {
+      const line = box(.16,.065,5,0xe8df9a);
+      line.position.set(x,.07,pz);
+      scene.add(line);
+    }
+  }
+}
+
+function addBuilding(x,z,w,h,d,color) {
+  const b = box(w,h,d,color);
+  b.position.set(x,h/2,z);
+  scene.add(b);
+
+  const roof = box(w+.4,.25,d+.4,0x555555);
+  roof.position.set(x,h+.12,z);
+  scene.add(roof);
+
+  // Windows on front and back
+  const windowMat = mat(0x8ecae6);
+  const cols = Math.max(1, Math.floor(w/4));
+  const rows = Math.max(1, Math.floor(h/3));
+  for(let r=0;r<rows;r++){
+    for(let c=0;c<cols;c++){
+      const win = new THREE.Mesh(new THREE.BoxGeometry(.9,.9,.05), windowMat);
+      win.position.set(
+        x-w/2+1.5+c*3,
+        2+r*3,
+        z-d/2-.03
+      );
+      scene.add(win);
+
+      const win2 = win.clone();
+      win2.position.z = z+d/2+.03;
+      scene.add(win2);
+    }
+  }
+}
+
+function addPalm(x,z) {
+  const group = new THREE.Group();
+  group.position.set(x,0,z);
+
+  const trunk = cylinder(.28,4.5,0x7a5230,12);
+  trunk.position.y=2.25;
+  group.add(trunk);
+
+  for(let i=0;i<7;i++){
+    const leaf = box(3.2,.08,.35,0x238b45);
+    const a=i*Math.PI*2/7;
+    leaf.position.set(Math.cos(a)*1.2,4.7,Math.sin(a)*1.2);
+    leaf.rotation.y=-a;
+    group.add(leaf);
+  }
+  scene.add(group);
+}
+
+function addWater() {
+  const water = new THREE.Mesh(
+    new THREE.PlaneGeometry(600,600),
+    new THREE.MeshStandardMaterial({color:0x2d9cdb,transparent:true,opacity:.72,roughness:.2})
+  );
+  water.rotation.x=-Math.PI/2;
+  water.position.y=-.12;
+  water.position.set(320,-.12,-320);
+  scene.add(water);
+}
+
+function createWorld() {
+  scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x8ed0ed);
+  scene.fog = new THREE.Fog(0x8ed0ed,120,430);
+
+  camera = new THREE.PerspectiveCamera(65,innerWidth/innerHeight,.1,700);
+
+  renderer = new THREE.WebGLRenderer({antialias:true});
+  renderer.setPixelRatio(Math.min(devicePixelRatio,1.6));
+  renderer.setSize(innerWidth,innerHeight);
+  renderer.shadowMap.enabled=true;
+  renderer.shadowMap.type=THREE.PCFSoftShadowMap;
+  document.body.appendChild(renderer.domElement);
+
+  const hemi = new THREE.HemisphereLight(0xffffff,0x557755,1.7);
+  scene.add(hemi);
+
+  const sun = new THREE.DirectionalLight(0xffffff,2.0);
+  sun.position.set(80,140,60);
+  sun.castShadow=true;
+  sun.shadow.mapSize.set(1024,1024);
+  scene.add(sun);
+
+  const ground = box(600,.3,600,0x55a95b);
+  ground.position.y=-.18;
+  ground.receiveShadow=true;
+  scene.add(ground);
+
+  // Main roads
+  addRoad(0,0,28,520);
+  addRoad(0,0,520,28);
+  addRoad(110,0,18,520);
+  addRoad(-110,0,18,520);
+  addRoad(0,110,520,18);
+  addRoad(0,-110,520,18);
+
+  // Buildings arranged in city blocks
+  const colors=[0xf0c987,0xd88972,0xa9c7d8,0xd7d3b8,0xb5a7cf,0xe1a86f];
+  for(let x=-210;x<=210;x+=42){
+    for(let z=-210;z<=210;z+=42){
+      const nearRoad = Math.abs(x)<24 || Math.abs(x-110)<18 || Math.abs(x+110)<18 ||
+                       Math.abs(z)<24 || Math.abs(z-110)<18 || Math.abs(z+110)<18;
+      if(nearRoad) continue;
+      const h=8+Math.random()*20;
+      addBuilding(x+(Math.random()-.5)*7,z+(Math.random()-.5)*7,25,h,25,colors[Math.floor(Math.random()*colors.length)]);
+    }
+  }
+
+  for(let x=-240;x<=240;x+=30){
+    addPalm(x,-245);
+    addPalm(x,245);
+  }
+  for(let z=-210;z<=210;z+=35){
+    addPalm(-245,z);
+    addPalm(245,z);
+  }
+
+  addWater();
+  createPlayer();
+
+  camera.position.set(0,7,10);
+}
+
+/* =========================
+   PLAYER
+========================= */
+function createPlayer() {
+  player = new THREE.Group();
+  player.position.set(0,0,8);
+
+  const body = box(1.25,2,0.75,0x2d6cdf);
+  body.position.y=2.1;
+  body.castShadow=true;
+  player.add(body);
+  playerParts.body=body;
+
+  const head = new THREE.Mesh(
+    new THREE.SphereGeometry(.58,20,16),
+    mat(0xc98f6d)
+  );
+  head.position.y=3.55;
+  head.castShadow=true;
+  player.add(head);
+  playerParts.head=head;
+
+  const hair = new THREE.SphereGeometry(.61,20,10,0,Math.PI*2,0,Math.PI*.48);
+  const hairMesh = new THREE.Mesh(hair,mat(0x17130f));
+  hairMesh.position.y=3.7;
+  player.add(hairMesh);
+
+  const leftLeg=box(.38,1.7,.45,0x1d1f24);
+  leftLeg.position.set(-.32,.85,0);
+  player.add(leftLeg);
+  playerParts.leftLeg=leftLeg;
+
+  const rightLeg=box(.38,1.7,.45,0x1d1f24);
+  rightLeg.position.set(.32,.85,0);
+  player.add(rightLeg);
+  playerParts.rightLeg=rightLeg;
+
+  const leftArm=box(.35,1.55,.38,0x2d6cdf);
+  leftArm.position.set(-.85,2.15,0);
+  player.add(leftArm);
+  playerParts.leftArm=leftArm;
+
+  const rightArm=box(.35,1.55,.38,0x2d6cdf);
+  rightArm.position.set(.85,2.15,0);
+  player.add(rightArm);
+  playerParts.rightArm=rightArm;
+
+  player.traverse(o=>{if(o.isMesh)o.castShadow=true});
+  scene.add(player);
+}
+
+/* =========================
+   MOVEMENT / CAMERA
+========================= */
+function updatePlayer(dt) {
+  if(!player || paused) return;
+
+  const len=Math.hypot(moveX,moveZ);
+  let dx=moveX, dz=moveZ;
+
+  if(len>0.01){
+    dx/=len; dz/=len;
+
+    const angle=cameraYaw;
+    const worldX=dx*Math.cos(angle)-dz*Math.sin(angle);
+    const worldZ=dx*Math.sin(angle)+dz*Math.cos(angle);
+
+    const speed=playerSpeed*(running?1.8:1);
+    player.position.x+=worldX*speed*(dt*60);
+    player.position.z+=worldZ*speed*(dt*60);
+
+    player.rotation.y=Math.atan2(worldX,worldZ);
+
+    const walk=Math.sin(performance.now()*0.012*(running?1.7:1));
+    playerParts.leftLeg.rotation.x=walk*.45;
+    playerParts.rightLeg.rotation.x=-walk*.45;
+    playerParts.leftArm.rotation.x=-walk*.25;
+    playerParts.rightArm.rotation.x=walk*.25;
+  } else {
+    playerParts.leftLeg.rotation.x*=.8;
+    playerParts.rightLeg.rotation.x*=.8;
+    playerParts.leftArm.rotation.x*=.8;
+    playerParts.rightArm.rotation.x*=.8;
+  }
+
+  // Jump physics
+  if(!isGrounded){
+    jumpVelocity-=0.018*(dt*60);
+    player.position.y+=jumpVelocity*(dt*60);
+    if(player.position.y<=0){
+      player.position.y=0;
+      jumpVelocity=0;
+      isGrounded=true;
+    }
+  }
+
+  player.position.x=Math.max(-worldLimit,Math.min(worldLimit,player.position.x));
+  player.position.z=Math.max(-worldLimit,Math.min(worldLimit,player.position.z));
+
+  const target = new THREE.Vector3(player.position.x,2.1+player.position.y,player.position.z);
+  const distance=vehicleMode?12:9;
+  const height=vehicleMode?5.5:5.0;
+
+  const cx=Math.sin(cameraYaw)*Math.cos(cameraPitch)*distance;
+  const cz=Math.cos(cameraYaw)*Math.cos(cameraPitch)*distance;
+
+  camera.position.lerp(
+    new THREE.Vector3(target.x+cx,target.y+height,target.z+cz),
+    .12
+  );
+  camera.lookAt(target.x,target.y+.4,target.z);
+
+  const mp=document.getElementById("mapPlayer");
+  mp.style.left=(59+player.position.x/5.2)+"px";
+  mp.style.top=(59+player.position.z/5.2)+"px";
+}
+
+/* =========================
+   TOUCH CONTROLS
+========================= */
+const joystick=document.getElementById("joystick");
+const stick=document.getElementById("stick");
+let joyPointer=null;
+
+joystick.addEventListener("pointerdown",e=>{
+  joyPointer=e.pointerId;
+  joystick.setPointerCapture(e.pointerId);
+  moveJoystick(e);
+});
+
+joystick.addEventListener("pointermove",e=>{
+  if(e.pointerId===joyPointer) moveJoystick(e);
+});
+
+joystick.addEventListener("pointerup",resetJoystick);
+joystick.addEventListener("pointercancel",resetJoystick);
+
+function moveJoystick(e){
+  const r=joystick.getBoundingClientRect();
+  const cx=r.left+r.width/2;
+  const cy=r.top+r.height/2;
+  let x=e.clientX-cx, y=e.clientY-cy;
+  const max=r.width*.35;
+  const d=Math.hypot(x,y);
+  if(d>max){x=x/d*max;y=y/d*max}
+  stick.style.left=(r.width/2-26+x)+"px";
+  stick.style.top=(r.height/2-26+y)+"px";
+  moveX=x/max;
+  moveZ=y/max;
+}
+function resetJoystick(){
+  joyPointer=null;
+  stick.style.left="34px";
+  stick.style.top="34px";
+  moveX=0;moveZ=0;
+}
+
+let camPointer=null,lastCamX=0,lastCamY=0;
+const cameraArea=document.getElementById("cameraArea");
+
+cameraArea.addEventListener("pointerdown",e=>{
+  camPointer=e.pointerId;
+  lastCamX=e.clientX;
+  lastCamY=e.clientY;
+  cameraArea.setPointerCapture(e.pointerId);
+});
+cameraArea.addEventListener("pointermove",e=>{
+  if(e.pointerId!==camPointer)return;
+  const dx=e.clientX-lastCamX;
+  const dy=e.clientY-lastCamY;
+  lastCamX=e.clientX;lastCamY=e.clientY;
+  cameraYaw-=dx*.008;
+  cameraPitch+=dy*.006;
+  cameraPitch=Math.max(.25,Math.min(1.05,cameraPitch));
+});
+cameraArea.addEventListener("pointerup",()=>camPointer=null);
+cameraArea.addEventListener("pointercancel",()=>camPointer=null);
+
+function pressButton(id,down,up){
+  const el=document.getElementById(id);
+  el.addEventListener("pointerdown",e=>{e.preventDefault();down()});
+  el.addEventListener("pointerup",e=>{e.preventDefault();up&&up()});
+  el.addEventListener("pointercancel",e=>{e.preventDefault();up&&up()});
+}
+pressButton("runButton",()=>running=true,()=>running=false);
+
+document.getElementById("jumpButton").addEventListener("pointerdown",()=>{
+  if(isGrounded && !paused){
+    jumpVelocity=.22;
+    isGrounded=false;
+  }
+});
+
+document.getElementById("interactButton").addEventListener("pointerdown",()=>{
+  gameState.xp+=10;
+  gameState.money+=25;
+  if(gameState.xp>=100){
+    gameState.xp=0;
+    gameState.level++;
+  }
+  gameState.mission="Find the next location";
+  updateUI();
+  showToast("+₹25   +10 XP");
+});
+
+document.getElementById("vehicleButton").addEventListener("pointerdown",()=>{
+  vehicleMode=!vehicleMode;
+  document.getElementById("vehicleButton").textContent=vehicleMode?"EXIT":"CAR";
+  showToast(vehicleMode?"Vehicle mode ON":"Vehicle mode OFF");
+});
+
+/* =========================
+   MENU / BACK
+========================= */
+document.getElementById("backButton").addEventListener("click",()=>{
+  paused=true;
+  document.getElementById("pauseMenu").style.display="flex";
+});
+
+document.getElementById("resumeButton").addEventListener("click",()=>{
+  paused=false;
+  document.getElementById("pauseMenu").style.display="none";
+});
+
+document.getElementById("saveButton").addEventListener("click",()=>{
+  saveGame();
+});
+
+document.getElementById("profileButton").addEventListener("click",()=>{
+  saveGame();
+  location.reload();
+});
+
+/* =========================
+   START GAME
+========================= */
+document.getElementById("startGame").addEventListener("click",()=>{
+  const name=document.getElementById("playerName").value.trim();
+  const age=document.getElementById("playerAge").value.trim();
+  const city=document.getElementById("playerCity").value;
+
+  if(!name){
+    alert("Please enter your player name.");
+    return;
+  }
+  if(!age || Number(age)<10){
+    alert("Please enter a valid age.");
+    return;
+  }
+
+  profile={
+    name,
+    age:Number(age),
+    city,
+    photo:photoData || "",
+    health:profile?.health ?? 100,
+    money:profile?.money ?? 500,
+    level:profile?.level ?? 1,
+    xp:profile?.xp ?? 0,
+    mission:profile?.mission ?? "Explore the city"
+  };
+  localStorage.setItem(STORAGE_KEY,JSON.stringify(profile));
+
+  profileScreen.classList.add("hidden");
+  loading.classList.remove("hidden");
+
+  setTimeout(()=>{
+    loadGame();
+    createWorld();
+    updateUI();
+    loading.classList.add("hidden");
+    gameUI.classList.remove("hidden");
+    gameStarted=true;
+    animate();
+  },500);
+});
+
+/* =========================
+   TOAST / LOOP / RESIZE
+========================= */
+let toastTimer;
+function showToast(msg){
+  const t=document.getElementById("toast");
+  t.textContent=msg;
+  t.classList.add("show");
+  clearTimeout(toastTimer);
+  toastTimer=setTimeout(()=>t.classList.remove("show"),1300);
+}
+
+function animate(){
+  requestAnimationFrame(animate);
+  const dt=Math.min(clock.getDelta(),.05);
+  updatePlayer(dt);
+  if(renderer && scene && camera) renderer.render(scene,camera);
+}
+
+window.addEventListener("resize",()=>{
+  if(!camera || !renderer)return;
+  camera.aspect=innerWidth/innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth,innerHeight);
+});
+
+// Browser back: show game menu instead of immediately leaving the page.
+history.pushState({game:true},"","");
+window.addEventListener("popstate",()=>{
+  if(gameStarted){
+    paused=true;
+    document.getElementById("pauseMenu").style.display="flex";
+    history.pushState({game:true},"","");
+  }
+});
+
+// Autosave
+setInterval(()=>{if(gameStarted)saveGame()},5000);
+</script>
+</body>
+</html>
